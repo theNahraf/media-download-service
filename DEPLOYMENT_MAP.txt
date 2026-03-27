@@ -1,0 +1,225 @@
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║               MEDIA DOWNLOAD SERVICE - DEPLOYMENT GUIDE MAP                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌─ YOUR SITUATION ──────────────────────────────────────────────────────────┐
+│  ✓ Want to deploy for FREE                                               │
+│  ✓ Need it working for an INTERVIEW                                      │
+│  ✓ Don't want to deal with AWS complexity                                │
+│  ✓ Want it done in under 30 minutes                                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ YOUR DEPLOYMENT OPTIONS ─────────────────────────────────────────────────┐
+│                                                                             │
+│  ⭐ OPTION 1: RAILWAY (RECOMMENDED)                                       │
+│  ├─ Time: 15 minutes                                                      │
+│  ├─ Cost: FREE (includes $5/month credit)                                │
+│  ├─ Includes: PostgreSQL, Redis, Docker support                          │
+│  ├─ Best for: Interviews, quick demos, side projects                    │
+│  └─ Guide: See RAILWAY_DEPLOYMENT.md                                     │
+│                                                                             │
+│  ⭐ OPTION 2: RENDER (BACKUP)                                             │
+│  ├─ Time: 20 minutes                                                      │
+│  ├─ Cost: FREE                                                            │
+│  ├─ Includes: PostgreSQL, Docker, free tier                             │
+│  ├─ Best for: If Railway has issues                                      │
+│  └─ Guide: See FREE_DEPLOYMENT.md                                        │
+│                                                                             │
+│  ⭐ OPTION 3: LOCAL (DEVELOPMENT ONLY)                                    │
+│  ├─ Time: 5 minutes                                                       │
+│  ├─ Cost: FREE                                                            │
+│  ├─ Best for: Testing locally before deploying                           │
+│  └─ Guide: See QUICK_REFERENCE.md → "3-Step Local Deployment"          │
+│                                                                             │
+│  🔴 OPTION 4: AWS (NOT RECOMMENDED FOR INTERVIEWS)                       │
+│  ├─ Time: 45+ minutes                                                     │
+│  ├─ Cost: $5-50/month (not free after trial)                            │
+│  ├─ Best for: Production use                                             │
+│  └─ Guide: See DEPLOYMENT_GUIDE.md → "Production Deployment"            │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ QUICK START (15 MIN) ────────────────────────────────────────────────────┐
+│                                                                             │
+│  Step 1: Push to GitHub (3 min)                                          │
+│  ┌────────────────────────────────────────────────────────────────────┐  │
+│  │ git init                                                            │  │
+│  │ git add .                                                           │  │
+│  │ git commit -m "initial: media download service"                   │  │
+│  │ git remote add origin https://github.com/YOUR/media-download     │  │
+│  │ git push -u origin main                                            │  │
+│  └────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  Step 2: Create Railway Services (5 min)                                 │
+│  ┌────────────────────────────────────────────────────────────────────┐  │
+│  │ 1. Go to railway.app                                              │  │
+│  │ 2. Click "New Project" → "Deploy from GitHub"                     │  │
+│  │ 3. Select your media-download-service repo                        │  │
+│  │ 4. Click "+" → PostgreSQL → Click "Create"                        │  │
+│  │ 5. Click "+" → Redis → Click "Create"                             │  │
+│  └────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  Step 3: Configure Environment (5 min)                                   │
+│  ┌────────────────────────────────────────────────────────────────────┐  │
+│  │ DATABASE_URL = <copy from PostgreSQL Variables>                    │  │
+│  │ REDIS_URL = <copy from Redis Variables>                            │  │
+│  │ S3_BUCKET_NAME = media-downloads-demo                              │  │
+│  │ ... (see INTERVIEW_DEPLOY.md for full list)                       │  │
+│  └────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  Step 4: Run Migrations (1 min)                                          │
+│  ┌────────────────────────────────────────────────────────────────────┐  │
+│  │ API Service → Deployments → Execute                                │  │
+│  │ Run: alembic upgrade head                                          │  │
+│  └────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  Step 5: Test (1 min)                                                    │
+│  ┌────────────────────────────────────────────────────────────────────┐  │
+│  │ Open: https://YOUR-APP.up.railway.app/                            │  │
+│  │ Should see: Download UI                                            │  │
+│  └────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ ARCHITECTURE ────────────────────────────────────────────────────────────┐
+│                                                                             │
+│                          WHAT YOU'RE DEPLOYING                             │
+│                                                                             │
+│   ┌─────────────────────────────────────────────────────────────────┐   │
+│   │                         RAILWAY                                  │   │
+│   │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │   │
+│   │  │   FastAPI    │  │   Celery     │  │  PostgreSQL  │          │   │
+│   │  │   (API)      │  │  (Workers)   │  │  (Database)  │          │   │
+│   │  └──────┬───────┘  └──────┬───────┘  └──────────────┘          │   │
+│   │         │                 │                                     │   │
+│   │         └────────┬────────┘                                     │   │
+│   │                  │                                              │   │
+│   │          ┌───────▼────────┐      ┌──────────────┐              │   │
+│   │          │   Redis Queue  │      │  AWS S3      │              │   │
+│   │          │  (Broker)      │      │  (Storage)   │              │   │
+│   │          └────────────────┘      └──────────────┘              │   │
+│   │                                                                 │   │
+│   └─────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│   User's Browser                                                          │
+│         ↓                                                                 │
+│   1. Submits download URL                                                │
+│   2. API stores job in PostgreSQL                                         │
+│   3. API sends task to Redis queue                                        │
+│   4. Worker picks up task                                                 │
+│   5. Worker downloads video via yt-dlp                                    │
+│   6. Worker uploads to S3                                                 │
+│   7. User receives download link                                          │
+│   8. User downloads directly from S3                                      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ DOCUMENTATION MAP ───────────────────────────────────────────────────────┐
+│                                                                             │
+│  For Interviews:                                                          │
+│  ├─ INTERVIEW_DEPLOY.md ............... 15-min quick start (START HERE!) │
+│  └─ RAILWAY_DEPLOYMENT.md ............ Detailed Railway step-by-step     │
+│                                                                             │
+│  For Free Deployment:                                                    │
+│  ├─ FREE_DEPLOYMENT.md ............... All free options (Railway/Render) │
+│  └─ QUICK_REFERENCE.md .............. Quick commands & troubleshooting    │
+│                                                                             │
+│  For Production:                                                          │
+│  ├─ DEPLOYMENT_GUIDE.md ............. Complete AWS deployment guide      │
+│  └─ DEPLOYMENT_CHECKLIST.md ......... Full pre-deployment checklist      │
+│                                                                             │
+│  For Code:                                                                │
+│  └─ README.md ....................... Project overview & architecture    │
+│                                                                             │
+│  Deployment Scripts:                                                      │
+│  └─ deploy.sh ....................... Automated deployment (local/prod)   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ PRE-INTERVIEW CHECKLIST ─────────────────────────────────────────────────┐
+│                                                                             │
+│  ☐ Code is on GitHub                                                      │
+│  ☐ Railway app is deployed                                                │
+│  ☐ PostgreSQL + Redis created                                             │
+│  ☐ Environment variables set                                              │
+│  ☐ Migrations run (alembic upgrade head)                                 │
+│  ☐ /health endpoint returns 200                                           │
+│  ☐ Web UI loads at root URL                                               │
+│  ☐ /docs shows Swagger API docs                                           │
+│  ☐ Test job submission works                                              │
+│  ☐ Worker processes a job successfully                                    │
+│  ☐ File appears in S3                                                     │
+│  ☐ Download link works                                                    │
+│                                                                             │
+│  ALL CHECKED? → YOU'RE READY! 🚀                                          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ INTERVIEW TALKING POINTS ────────────────────────────────────────────────┐
+│                                                                             │
+│  "I built a scalable media download service using:"                       │
+│                                                                             │
+│  Architecture:                                                            │
+│  • FastAPI for async HTTP API (handles millions of requests)              │
+│  • Celery + Redis for job queue (decoupled processing)                    │
+│  • PostgreSQL for data persistence                                        │
+│  • S3/MinIO for file storage                                              │
+│                                                                             │
+│  Why This Design:                                                         │
+│  • Async API = high concurrency, no blocking                              │
+│  • Celery = horizontal scaling (add workers as needed)                    │
+│  • Redis queue = deduplication + progress tracking                        │
+│  • Separate storage = stateless servers                                   │
+│                                                                             │
+│  Deployment:                                                              │
+│  • Currently running on Railway (free tier)                               │
+│  • Same code works on AWS ECS/Fargate for production                      │
+│  • Fully containerized with Docker                                        │
+│  • Infrastructure as code (docker-compose.yml)                            │
+│                                                                             │
+│  Scalability:                                                             │
+│  • API can handle 1000s of concurrent users                               │
+│  • Workers are stateless, can scale horizontally                          │
+│  • Database connection pooling via SQLAlchemy                             │
+│  • Redis caching prevents duplicate downloads                             │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ WHAT TO SHOW IN INTERVIEW ───────────────────────────────────────────────┐
+│                                                                             │
+│  1. Live Demo (2 minutes)                                                 │
+│     → Open web UI                                                         │
+│     → Submit a download                                                   │
+│     → Show job tracking in real-time                                      │
+│                                                                             │
+│  2. API Documentation (1 minute)                                          │
+│     → Open /docs (Swagger UI)                                             │
+│     → Show all available endpoints                                        │
+│     → Show request/response formats                                       │
+│                                                                             │
+│  3. Architecture Diagram (1 minute)                                       │
+│     → Explain the flow: API → Queue → Worker → Storage                   │
+│     → Why each component is needed                                        │
+│                                                                             │
+│  4. Code Quality (2 minutes)                                              │
+│     → Show GitHub repo                                                    │
+│     → Highlight key files:                                                │
+│        - api/main.py (FastAPI app)                                        │
+│        - worker/tasks.py (Celery tasks)                                   │
+│        - api/services/cache_service.py (Deduplication logic)              │
+│                                                                             │
+│  5. Deployment Strategy (1 minute)                                        │
+│     → Currently: Railway (free, easy)                                     │
+│     → Production: AWS ECS/Fargate                                         │
+│     → Same code, different infrastructure                                 │
+│                                                                             │
+│  TOTAL: ~7 minutes of amazing demo!                                       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                        🎯 START HERE: INTERVIEW_DEPLOY.md                     ║
+║                              Takes only 15 minutes!                           ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
