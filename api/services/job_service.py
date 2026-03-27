@@ -37,7 +37,21 @@ async def create_job(
         if existing_job and existing_job.status in (
             JobStatus.COMPLETED, JobStatus.PROCESSING, JobStatus.PENDING, JobStatus.UPLOADING
         ):
-            return existing_job, False
+            if existing_job.status == JobStatus.COMPLETED and existing_job.s3_key:
+                # Verify file still exists on S3 before trusting dedup cache
+                from api.services.storage_service import file_exists
+                import logging
+                logging.getLogger(__name__).info(f"Checking if file {existing_job.s3_key} exists on S3...")
+                exists = file_exists(existing_job.s3_key)
+                logging.getLogger(__name__).info(f"File exists result: {exists}")
+                if not exists:
+                    # File missing, fall through to create a new job
+                    existing_job = None
+                    logging.getLogger(__name__).info(f"Dropped existing job, proceeding to create new.")
+                else:
+                    return existing_job, False
+            else:
+                return existing_job, False
 
     # Create new job
     job = Job(

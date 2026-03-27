@@ -89,6 +89,7 @@
             font-weight: 800;
             background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             letter-spacing: -0.5px;
         }
@@ -462,6 +463,24 @@
 </div>
 
 <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const formatSelect = document.getElementById("format");
+        const qualitySelect = document.getElementById("quality");
+        
+        formatSelect.addEventListener("change", (e) => {
+            if (e.target.value === "audio") {
+                qualitySelect.innerHTML = '<option value="best">Best Audio Format</option>';
+            } else {
+                qualitySelect.innerHTML = `
+                    <option value="best">Best Available</option>
+                    <option value="1080p">1080p</option>
+                    <option value="720p">720p</option>
+                    <option value="480p">480p</option>
+                `;
+            }
+        });
+    });
+
     let pollInterval = null;
 
     async function submitJob() {
@@ -588,8 +607,17 @@
         if (data.status === "completed" && data.download_url) {
             document.getElementById("progressBlock").style.display = "none";
             const btn = document.getElementById("downloadBtn");
-            btn.href = data.download_url;
-            // The display property was overridden to use flex for icon gap
+            
+            // Rewrite the host dynamically so it works across network devices 
+            // (changes localhost to 192.168.x.x automatically on your phone)
+            try {
+                const urlObj = new URL(data.download_url);
+                urlObj.hostname = window.location.hostname;
+                btn.href = urlObj.toString();
+            } catch(e) {
+                btn.href = data.download_url;
+            }
+            
             btn.style.display = "flex";
         }
 
