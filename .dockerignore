@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+eggs/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# env files (don't bake secrets into images)
+# .env is loaded via docker-compose env_file, not baked in
+
+# Downloads (temp files)
+downloads/
+/tmp/
+
+# Alembic
+alembic/versions/__pycache__/
