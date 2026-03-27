@@ -122,7 +122,7 @@ async def download_file(
     if not job.s3_key:
         raise HTTPException(status_code=404, detail="File not found in storage")
 
-    signed_url = generate_signed_url(job.s3_key)
+    signed_url = generate_signed_url(job.s3_key, download_filename=job.original_filename)
     return RedirectResponse(url=signed_url, status_code=302)
 
 

@@ -63,7 +63,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
       MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
-      MINIO_SERVER_URL: ${S3_PUBLIC_URL:-http://localhost:9000}
+      MINIO_SERVER_URL: http://localhost:9000
     ports:
       - "9000:9000"
       - "9001:9001"

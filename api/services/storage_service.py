@@ -95,7 +95,13 @@ def upload_file(
     if original_filename:
         import urllib.parse
         encoded_name = urllib.parse.quote(original_filename)
-        extra_args["ContentDisposition"] = f"attachment; filename*=UTF-8''{encoded_name}"
+        
+        # Create an ASCII-only fallback string, removing quotes
+        ascii_fallback = "".join(c if ord(c) < 128 else "_" for c in original_filename)
+        ascii_fallback = ascii_fallback.replace('"', '').replace('\n', '').replace('\r', '')
+        
+        # Use both filename (for older/fallback compatibility) and filename* (for modern utf-8)
+        extra_args["ContentDisposition"] = f'attachment; filename="{ascii_fallback}"; filename*=UTF-8\'\'{encoded_name}'
         
     client.upload_file(
         file_path,
@@ -130,7 +136,18 @@ def generate_signed_url(s3_key: str, expiry_seconds: Optional[int] = None, downl
     """
     # Simply format the URL based on the public server IP!
     base = settings.s3_public_url.rstrip("/")
-    return f"{base}/{settings.s3_bucket_name}/{s3_key}"
+    url = f"{base}/{settings.s3_bucket_name}/{s3_key}"
+    
+    if download_filename:
+        import urllib.parse
+        # Create safe ascii filename for older browsers
+        safe_name = "".join(c if ord(c) < 128 else "_" for c in download_filename).replace('"', '')
+        encoded_name = urllib.parse.quote(download_filename)
+        # Using the standard disposition format for query params
+        disposition = f'attachment; filename="{safe_name}"; filename*=UTF-8\'\'{encoded_name}'
+        url += f"?response-content-disposition={urllib.parse.quote(disposition)}"
+        
+    return url
 
 
 def delete_file(s3_key: str):
