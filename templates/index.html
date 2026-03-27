@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YouTube Downloader</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #0f172a;
+            color: white;
+            text-align: center;
+            margin-top: 80px;
+        }
+
+        .container {
+            background: #1e293b;
+            padding: 30px;
+            border-radius: 12px;
+            width: 500px;
+            margin: auto;
+        }
+
+        input, select {
+            width: 90%;
+            padding: 12px;
+            margin: 10px;
+            border-radius: 8px;
+            border: none;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            background: #3b82f6;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #2563eb;
+        }
+
+        #status {
+            margin-top: 15px;
+            color: #22c55e;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>YouTube Downloader</h2>
+
+    <input id="url" placeholder="Paste YouTube URL here" />
+
+    <select id="mode">
+        <option value="best">Best Quality</option>
+        <option value="720">720p</option>
+        <option value="480">480p</option>
+        <option value="360">360p</option>
+        <option value="audio">Audio Only (MP3)</option>
+    </select>
+
+    <br>
+
+    <button onclick="downloadVideo()">Download</button>
+
+    <p id="status"></p>
+</div>
+
+<script>
+async function downloadVideo() {
+    const url = document.getElementById("url").value;
+    const mode = document.getElementById("mode").value;
+    const status = document.getElementById("status");
+
+    if (!url) {
+        status.innerText = "Enter URL";
+        return;
+    }
+
+    status.innerText = "Preparing download...";
+
+    try {
+        const response = await fetch("/download", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ url, mode })
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            status.innerText = "Error: " + err.error;
+            return;
+        }
+
+        const blob = await response.blob();
+
+        const a = document.createElement("a");
+        a.href = window.URL.createObjectURL(blob);
+
+        // Browser will use server filename (YouTube title)
+        a.download = "";
+        a.click();
+
+        status.innerText = "Download started ✔";
+
+    } catch (err) {
+        status.innerText = "Something went wrong";
+    }
+}
+</script>
+
+</body>
+</html>
