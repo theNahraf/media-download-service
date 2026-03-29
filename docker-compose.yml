@@ -29,6 +29,16 @@ services:
       - redis
       - minio
 
+  beat:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: celery -A worker.celery_app beat --loglevel=info
+    env_file: .env
+    depends_on:
+      - redis
+      - worker
+
   postgres:
     image: postgres:16-alpine
     environment:

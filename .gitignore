@@ -19,13 +19,17 @@ venv/
 .DS_Store
 Thumbs.db
 
-# Environment
+# Environment — NEVER commit real secrets
 .env
 
-# Downloads
+# Downloads temp folder
 downloads/
 
 # Docker volumes
 pg_data/
 redis_data/
 minio_data/
+
+# Celery beat schedule file (auto-generated at runtime)
+celerybeat-schedule
+celerybeat.pid

@@ -10,7 +10,7 @@ celery_app = Celery(
     "media_worker",
     broker=REDIS_URL,
     backend=REDIS_URL,
-    include=["worker.tasks"]
+    include=["worker.tasks", "worker.cleanup"]
 )
 
 celery_app.conf.update(
@@ -19,8 +19,12 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
-    # Visibility timeout for unacknowledged tasks (e.g. if worker crashes)
-    broker_transport_options={"visibility_timeout": 3600}, # 1 hour
-    # Worker concurrency is controlled via command line options or env var
-    # usually: celery -A worker.celery_app worker --concurrency=4
+    broker_transport_options={"visibility_timeout": 3600},
+    # Run cleanup every 6 hours
+    beat_schedule={
+        "cleanup-expired-files": {
+            "task": "worker.cleanup.cleanup_expired_files",
+            "schedule": float(os.getenv("CLEANUP_INTERVAL_SECONDS", str(6 * 3600))),
+        },
+    },
 )
