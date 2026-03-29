@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from api.database import get_db
-from api.models import Job
+from api.models import Job, JobStatus
 from api.config import get_settings
 
 settings = get_settings()
@@ -83,3 +83,38 @@ async def purge_job_record(job_id: str, request: Request, db: AsyncSession = Dep
     await db.delete(job)
     await db.commit()
     return {"status": "success"}
+
+@router.delete("/jobs/purge-failed")
+async def purge_failed_jobs(request: Request, db: AsyncSession = Depends(get_db)):
+    if request.cookies.get("admin_session") != "authorized":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    stmt = select(Job).where(Job.status.in_([JobStatus.FAILED, JobStatus.CANCELLED]))
+    result = await db.execute(stmt)
+    jobs = result.scalars().all()
+    for job in jobs:
+        await db.delete(job)
+    await db.commit()
+    return {"status": "success", "purged": len(jobs)}
+
+@router.post("/jobs/cancel-active")
+async def cancel_active_jobs(request: Request, db: AsyncSession = Depends(get_db)):
+    if request.cookies.get("admin_session") != "authorized":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    stmt = select(Job).where(Job.status.in_([JobStatus.PENDING, JobStatus.PROCESSING, JobStatus.UPLOADING]))
+    result = await db.execute(stmt)
+    jobs = result.scalars().all()
+    
+    from worker.celery_app import celery_app
+    from datetime import datetime, timezone
+    
+    count = 0
+    for job in jobs:
+        celery_app.control.revoke(str(job.id), terminate=True, signal='SIGKILL')
+        job.status = JobStatus.CANCELLED
+        job.updated_at = datetime.now(timezone.utc)
+        count += 1
+    
+    await db.commit()
+    return {"status": "success", "cancelled": count}

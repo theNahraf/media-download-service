@@ -108,6 +108,13 @@ async def get_job_progress(job_id: str) -> Optional[int]:
     return int(val) if val else None
 
 
+async def get_playlist_progress(job_id: str) -> Optional[dict]:
+    """Get playlist per-video progress state set by the worker."""
+    r = await get_redis()
+    val = await r.get(f"job:{job_id}:playlist")
+    return json.loads(val) if val else None
+
+
 # ─── Job Status Cache ───
 
 async def cache_job_status(job_id: str, status: str, ttl: int = 30):

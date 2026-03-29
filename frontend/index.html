@@ -1,12 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scalable Media Downloader</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root {
             --bg-color: #050505;
@@ -37,35 +41,90 @@
             position: relative;
         }
 
-        /* Animated Mesh Background */
-        body::before, body::after {
-            content: '';
+        /* Animated Glass Floating Icons Background */
+        .floating-bg {
             position: fixed;
-            width: 60vw;
-            height: 60vw;
-            border-radius: 50%;
-            z-index: -1;
-            filter: blur(100px);
-            animation: float 20s infinite alternate ease-in-out;
-            opacity: 0.4;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -2;
+            overflow: hidden;
+            pointer-events: none;
+            background: radial-gradient(circle at center, #0f172a 0%, #050505 100%);
         }
 
-        body::before {
-            top: -10vw;
-            left: -10vw;
-            background: radial-gradient(circle, var(--primary) 0%, transparent 70%);
+        .floating-icon {
+            position: absolute;
+            opacity: 0.12;
+            filter: blur(3px);
+            animation: floatUp linear infinite;
         }
 
-        body::after {
-            bottom: -10vw;
-            right: -10vw;
-            background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+        @keyframes floatUp {
+            0% {
+                transform: translateY(110vh) rotate(0deg) scale(1);
+            }
+
+            100% {
+                transform: translateY(-30vh) rotate(360deg) scale(1.5);
+            }
+        }
+
+        .icon-1 {
+            left: 10%;
+            animation-duration: 25s;
+            animation-delay: 0s;
+            font-size: 80px;
+            color: #ff0000;
+        }
+
+        .icon-2 {
+            left: 30%;
+            animation-duration: 35s;
+            animation-delay: -5s;
+            font-size: 100px;
+            color: #E1306C;
+        }
+
+        .icon-3 {
+            left: 50%;
+            animation-duration: 40s;
+            animation-delay: -15s;
+            font-size: 120px;
+            color: #00f2fe;
+        }
+
+        .icon-4 {
+            left: 70%;
+            animation-duration: 30s;
             animation-delay: -10s;
+            font-size: 90px;
+            color: var(--text-main);
         }
 
-        @keyframes float {
-            0% { transform: translate(0, 0) scale(1); }
-            100% { transform: translate(10vw, 5vw) scale(1.2); }
+        .icon-5 {
+            left: 90%;
+            animation-duration: 45s;
+            animation-delay: -20s;
+            font-size: 70px;
+            color: #1877F2;
+        }
+
+        .icon-6 {
+            left: 20%;
+            animation-duration: 50s;
+            animation-delay: -25s;
+            font-size: 110px;
+            color: #ff0000;
+        }
+
+        .icon-7 {
+            left: 80%;
+            animation-duration: 28s;
+            animation-delay: -30s;
+            font-size: 85px;
+            color: #E1306C;
         }
 
         .container {
@@ -81,6 +140,9 @@
             text-align: center;
             position: relative;
             z-index: 10;
+            transform-style: preserve-3d;
+            perspective: 1000px;
+            transition: transform 0.1s ease-out;
         }
 
         h1 {
@@ -122,6 +184,48 @@
             align-items: center;
         }
 
+        /* Paste button inside URL input */
+        button.paste-btn {
+            position: absolute; right: 10px;
+            top: 50%; transform: translateY(-50%);
+            background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.35);
+            color: #a78bfa; border-radius: 6px;
+            font-size: 13px; cursor: pointer;
+            transition: background 0.2s, color 0.2s; z-index: 2;
+            display: flex; align-items: center; justify-content: center;
+            width: 28px; height: 28px; min-width: unset;
+            padding: 0; margin: 0; box-shadow: none;
+        }
+        button.paste-btn::after { display: none; } /* no shimmer on paste btn */
+        button.paste-btn:hover:not(:disabled) {
+            background: rgba(139, 92, 246, 0.4); color: #fff;
+            transform: translateY(-50%); /* keep centered on hover */
+            box-shadow: none;
+        }
+        #url { padding-right: 52px; }
+
+        /* URL Preview Card */
+        .preview-card {
+            display: none; margin-top: 12px; margin-bottom: 20px;
+            background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 14px; padding: 14px; gap: 12px;
+            align-items: center; animation: slideUp 0.3s ease;
+            position: relative;
+        }
+        .preview-card.show { display: flex; }
+        .preview-card img {
+            width: 90px; height: 54px; object-fit: cover; border-radius: 8px;
+            flex-shrink: 0; background: rgba(255,255,255,0.05);
+        }
+        .preview-info { flex: 1; min-width: 0; text-align: left; }
+        .preview-info .preview-title {
+            font-size: 13px; font-weight: 600; color: #f8fafc;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            display: block; margin-bottom: 4px;
+        }
+        .preview-info .preview-meta { font-size: 11px; color: #64748b; }
+        .preview-loading { font-size: 13px; color: #64748b; padding: 10px 0; margin-top: 10px; display: none; }
+
         .input-icon {
             position: absolute;
             left: 16px;
@@ -130,7 +234,8 @@
             height: 18px;
         }
 
-        input[type="url"], select {
+        input[type="url"],
+        select {
             width: 100%;
             padding: 16px 16px 16px 44px;
             border-radius: 12px;
@@ -151,7 +256,8 @@
             background-size: 16px;
         }
 
-        input[type="url"]:focus, select:focus {
+        input[type="url"]:focus,
+        select:focus {
             outline: none;
             border-color: var(--primary);
             box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
@@ -185,6 +291,34 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.3) 50%, rgba(255, 255, 255, 0) 100%);
+            transform: skewX(-20deg);
+            animation: shimmer-btn 3s infinite;
+        }
+
+        @keyframes shimmer-btn {
+            0% {
+                left: -100%;
+            }
+
+            20% {
+                left: 200%;
+            }
+
+            100% {
+                left: 200%;
+            }
         }
 
         button:hover:not(:disabled) {
@@ -220,8 +354,15 @@
         }
 
         @keyframes slideUp {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .status-header {
@@ -241,11 +382,35 @@
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
-        .badge.pending { background: rgba(51, 65, 85, 0.8); color: #cbd5e1; border: 1px solid #475569; }
-        .badge.processing { background: rgba(30, 58, 138, 0.8); color: #93c5fd; border: 1px solid #1e40af; }
-        .badge.uploading { background: rgba(126, 34, 206, 0.8); color: #d8b4fe; border: 1px solid #9333ea; }
-        .badge.completed { background: rgba(20, 83, 45, 0.8); color: #86efac; border: 1px solid #166534; }
-        .badge.failed { background: rgba(127, 29, 29, 0.8); color: #fca5a5; border: 1px solid #991b1b; }
+        .badge.pending {
+            background: rgba(51, 65, 85, 0.8);
+            color: #cbd5e1;
+            border: 1px solid #475569;
+        }
+
+        .badge.processing {
+            background: rgba(30, 58, 138, 0.8);
+            color: #93c5fd;
+            border: 1px solid #1e40af;
+        }
+
+        .badge.uploading {
+            background: rgba(126, 34, 206, 0.8);
+            color: #d8b4fe;
+            border: 1px solid #9333ea;
+        }
+
+        .badge.completed {
+            background: rgba(20, 83, 45, 0.8);
+            color: #86efac;
+            border: 1px solid #166534;
+        }
+
+        .badge.failed {
+            background: rgba(127, 29, 29, 0.8);
+            color: #fca5a5;
+            border: 1px solid #991b1b;
+        }
 
         .progress-block {
             margin-bottom: 15px;
@@ -276,18 +441,21 @@
             left: 0;
             bottom: 0;
             right: 0;
-            background: linear-gradient(
-                90deg,
-                rgba(255, 255, 255, 0) 0%,
-                rgba(255, 255, 255, 0.3) 50%,
-                rgba(255, 255, 255, 0) 100%
-            );
+            background: linear-gradient(90deg,
+                    rgba(255, 255, 255, 0) 0%,
+                    rgba(255, 255, 255, 0.3) 50%,
+                    rgba(255, 255, 255, 0) 100%);
             animation: shimmer 1.5s infinite;
         }
 
         @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
+            0% {
+                transform: translateX(-100%);
+            }
+
+            100% {
+                transform: translateX(100%);
+            }
         }
 
         .video-meta {
@@ -355,7 +523,7 @@
             box-shadow: 0 12px 25px rgba(16, 185, 129, 0.4);
             background: linear-gradient(135deg, #34d399 0%, var(--success) 100%);
         }
-        
+
         #error-msg {
             color: var(--error);
             font-size: 14px;
@@ -369,338 +537,533 @@
         }
     </style>
 </head>
+
 <body>
 
-<div class="container">
-    <h1>Media Downloader</h1>
-    <p class="subtitle">Download from YouTube, Instagram, TikTok, X/Twitter, Facebook & more</p>
-
-    <div class="form-group">
-        <label for="url">Video URL</label>
-        <div class="input-icon-wrapper">
-            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-            </svg>
-            <input type="url" id="url" placeholder="Paste media link (YouTube, Insta, TikTok, X...)" required />
-        </div>
+    <div class="floating-bg">
+        <i class="fa-brands fa-youtube floating-icon icon-1"></i>
+        <i class="fa-brands fa-instagram floating-icon icon-2"></i>
+        <i class="fa-brands fa-tiktok floating-icon icon-3"></i>
+        <i class="fa-brands fa-x-twitter floating-icon icon-4"></i>
+        <i class="fa-brands fa-facebook floating-icon icon-5"></i>
+        <i class="fa-brands fa-youtube floating-icon icon-6"></i>
+        <i class="fa-brands fa-instagram floating-icon icon-7"></i>
     </div>
 
-    <div class="grid-2">
-        <div class="form-group">
-            <label for="format">Format</label>
-            <div class="input-icon-wrapper">
-                <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                <select id="format">
-                    <option value="video">Video (MP4)</option>
-                    <option value="audio">Audio (MP3)</option>
-                </select>
-            </div>
-        </div>
-        
-        <div class="form-group">
-            <label for="quality">Quality</label>
-            <div class="input-icon-wrapper">
-                <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                </svg>
-                <select id="quality">
-                    <option value="best">Best Available</option>
-                    <option value="1080p">1080p</option>
-                    <option value="720p">720p</option>
-                    <option value="480p">480p</option>
-                </select>
-            </div>
-        </div>
-    </div>
+    <div class="container"
+        style="backdrop-filter: blur(60px); background: rgba(15, 23, 42, 0.4); box-shadow: 0 0 40px rgba(139, 92, 246, 0.1);">
+        <h1 style="font-size: 38px; line-height: 1.1; margin-bottom: 20px;">Universal Media <br /><span
+                style="color: var(--primary);">Extraction Engine</span></h1>
 
-    <button id="submitBtn" onclick="submitJob()">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-        </svg>
-        <span>Prepare Download</span>
-    </button>
-    <div id="error-msg"></div>
+        <div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 30px;">
+            <span
+                style="font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 30px; background: rgba(255,0,0,0.1); border: 1px solid rgba(255,0,0,0.3); color: #fca5a5; display:flex; align-items:center; gap:6px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"><i
+                    class="fa-brands fa-youtube"></i> YouTube</span>
+            <span
+                style="font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 30px; background: rgba(225,48,108,0.1); border: 1px solid rgba(225,48,108,0.3); color: #fbcfe8; display:flex; align-items:center; gap:6px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"><i
+                    class="fa-brands fa-instagram"></i> Instagram</span>
+            <span
+                style="font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 30px; background: rgba(0,242,254,0.1); border: 1px solid rgba(0,242,254,0.3); color: #67e8f9; display:flex; align-items:center; gap:6px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"><i
+                    class="fa-brands fa-tiktok"></i> TikTok</span>
+            <span
+                style="font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 30px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); color: #f8fafc; display:flex; align-items:center; gap:6px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"><i
+                    class="fa-brands fa-x-twitter"></i> X.com</span>
+            <span
+                style="font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 30px; background: rgba(24,119,242,0.1); border: 1px solid rgba(24,119,242,0.3); color: #bfdbfe; display:flex; align-items:center; gap:6px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"><i
+                    class="fa-brands fa-facebook"></i> Facebook</span>
+            <span
+                style="font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 30px; background: rgba(255,255,255,0.05); border: 1px dashed rgba(255,255,255,0.2); color: #94a3b8; display:flex; align-items:center; gap:6px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">+
+                Reddit & More</span>
+        </div>
 
-    <!-- Status Tracker -->
-    <div class="status-container" id="statusBox">
-        
-        <div class="video-meta" id="videoMeta" style="display: none;">
-            <img src="" alt="Thumbnail" class="thumbnail" id="thumbImg">
-            <div class="meta-info">
-                <h4 id="videoTitle">Loading details...</h4>
-                <div>
-                    <span class="pill" id="videoDuration" style="display:none;"></span>
-                    <span class="pill" id="videoSize" style="display:none;"></span>
+        <div class="form-group">
+            <label for="url">Video URL</label>
+            <div class="input-icon-wrapper">
+                <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
+                <input type="url" id="url" placeholder="Paste media link (YouTube, Insta, TikTok, X...)" required />
+                <button class="paste-btn" type="button" onclick="pasteFromClipboard()" title="Paste from clipboard">
+                    <i class="fa-solid fa-clipboard"></i>
+                </button>
+            </div>
+            <!-- Preview card (shown after URL is detected) -->
+            <div class="preview-loading" id="previewLoading">⏳ Fetching preview...</div>
+            <div class="preview-card" id="previewCard">
+                <img id="previewThumb" src="" alt="thumbnail">
+                <div class="preview-info">
+                    <span class="preview-title" id="previewTitle"></span>
+                    <span class="preview-meta" id="previewMeta"></span>
                 </div>
             </div>
         </div>
 
-        <div class="status-header">
-            <span style="font-size: 14px; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Status</span>
-            <span class="badge pending" id="statusBadge">PENDING</span>
+        <div class="grid-2">
+            <div class="form-group">
+                <label for="format">Format</label>
+                <div class="input-icon-wrapper">
+                    <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    <select id="format">
+                        <option value="video">Video (MP4)</option>
+                        <option value="audio">Audio (MP3)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="quality">Quality</label>
+                <div class="input-icon-wrapper">
+                    <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                    </svg>
+                    <select id="quality">
+                        <option value="best">Best Available</option>
+                        <option value="1080p">1080p</option>
+                        <option value="720p">720p</option>
+                        <option value="480p">480p</option>
+                    </select>
+                </div>
+            </div>
         </div>
 
-        <div class="progress-block" id="progressBlock">
-            <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 500; color: #cbd5e1;">
-                <span id="progressText">Checking queue...</span>
-                <span id="progressPercent">0%</span>
-            </div>
-            <div class="progress-bar-bg">
-                <div class="progress-bar-fill" id="progressBar"></div>
-            </div>
-        </div>
-
-        <p id="jobError" style="color: var(--error); font-size: 13px; font-weight: 500; display: none; margin-top: 12px; padding: 10px; background: rgba(239, 68, 68, 0.1); border-radius: 6px;"></p>
-
-        <a href="#" class="download-btn" id="downloadBtn" target="_blank" style="display: none; align-items: center; justify-content: center; gap: 8px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        <button id="submitBtn" onclick="submitJob()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Save File to Device
-        </a>
-    </div>
-</div>
+            <span>Prepare Download</span>
+        </button>
+        <div id="error-msg"></div>
 
-<script>
-    document.addEventListener("DOMContentLoaded", () => {
-        const formatSelect = document.getElementById("format");
-        const qualitySelect = document.getElementById("quality");
-        
-        formatSelect.addEventListener("change", (e) => {
-            if (e.target.value === "audio") {
-                qualitySelect.innerHTML = '<option value="best">Best Audio Format</option>';
-            } else {
-                qualitySelect.innerHTML = `
+        <!-- Status Tracker -->
+        <div class="status-container" id="statusBox">
+
+            <div class="video-meta" id="videoMeta" style="display: none;">
+                <img src="" alt="Thumbnail" class="thumbnail" id="thumbImg">
+                <div class="meta-info">
+                    <h4 id="videoTitle">Loading details...</h4>
+                    <div>
+                        <span class="pill" id="videoDuration" style="display:none;"></span>
+                        <span class="pill" id="videoSize" style="display:none;"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="status-header">
+                <span
+                    style="font-size: 14px; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Status</span>
+                <span class="badge pending" id="statusBadge">PENDING</span>
+            </div>
+
+            <div class="progress-block" id="progressBlock">
+                <div
+                    style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 500; color: #cbd5e1;">
+                    <span id="progressText">Checking queue...</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="progressBar"></div>
+                </div>
+            </div>
+
+            <p id="jobError"
+                style="color: var(--error); font-size: 13px; font-weight: 500; display: none; margin-top: 12px; padding: 10px; background: rgba(239, 68, 68, 0.1); border-radius: 6px;">
+            </p>
+
+            <a href="#" class="download-btn" id="downloadBtn" target="_blank"
+                style="display: none; align-items: center; justify-content: center; gap: 8px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Save File to Device
+            </a>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const formatSelect = document.getElementById("format");
+            const qualitySelect = document.getElementById("quality");
+
+            // 3D Parallax Tilt Effect
+            const container = document.querySelector('.container');
+            document.addEventListener('mousemove', (e) => {
+                if (!container) return;
+                const xAxis = (window.innerWidth / 2 - e.pageX) / 35;
+                const yAxis = (window.innerHeight / 2 - e.pageY) / 35;
+                container.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+            });
+
+            document.addEventListener('mouseleave', () => {
+                if (!container) return;
+                container.style.transform = `rotateY(0deg) rotateX(0deg)`;
+            });
+
+            formatSelect.addEventListener("change", (e) => {
+                if (e.target.value === "audio") {
+                    qualitySelect.innerHTML = '<option value="best">Best Audio Format</option>';
+                } else {
+                    qualitySelect.innerHTML = `
                     <option value="best">Best Available</option>
                     <option value="1080p">1080p</option>
                     <option value="720p">720p</option>
                     <option value="480p">480p</option>
                 `;
+                }
+            });
+
+            // Auto-fill and auto-submit logic for URL redirect feature
+            const hostname = window.location.hostname;
+            const pathname = window.location.pathname;
+            const search = window.location.search;
+
+            let urlToDownload = null;
+
+            // 1. Check for 'farhanyoutube.com' magic domain redirect
+            if (hostname.includes("farhanyoutube.com") || hostname.includes("farhanyoutu.be")) {
+                // Reconstruct the original youtube URL by removing 'farhan'
+                let originalDomain = hostname.replace("farhan", "");
+                urlToDownload = "https://" + originalDomain + pathname + search;
+            } else {
+                // 2. Check for path-based redirect (e.g. ourdomain.com/https://youtube.com/...)
+                let urlFromPath = pathname.substring(1);
+                if (search) {
+                    urlFromPath += search;
+                }
+                urlFromPath = urlFromPath.replace(/\/$/, "");
+
+                if (urlFromPath && (urlFromPath.startsWith("http") || urlFromPath.includes("youtube") || urlFromPath.includes("instagram") || urlFromPath.includes("tiktok") || urlFromPath.includes("twitter") || urlFromPath.includes("x.com") || urlFromPath.includes("youtu.be"))) {
+                    if (!urlFromPath.startsWith("http")) {
+                        urlFromPath = "https://" + urlFromPath;
+                    }
+                    urlToDownload = urlFromPath;
+                }
+            }
+
+            if (urlToDownload) {
+                document.getElementById("url").value = urlToDownload;
+                // Wait briefly for UI to render
+                setTimeout(() => {
+                    submitJob();
+                }, 500);
             }
         });
 
-        // Auto-fill and auto-submit logic for URL redirect feature
-        const hostname = window.location.hostname;
-        const pathname = window.location.pathname;
-        const search = window.location.search;
-        
-        let urlToDownload = null;
-        
-        // 1. Check for 'farhanyoutube.com' magic domain redirect
-        if (hostname.includes("farhanyoutube.com") || hostname.includes("farhanyoutu.be")) {
-            // Reconstruct the original youtube URL by removing 'farhan'
-            let originalDomain = hostname.replace("farhan", "");
-            urlToDownload = "https://" + originalDomain + pathname + search;
-        } else {
-            // 2. Check for path-based redirect (e.g. ourdomain.com/https://youtube.com/...)
-            let urlFromPath = pathname.substring(1);
-            if (search) {
-                urlFromPath += search;
-            }
-            urlFromPath = urlFromPath.replace(/\/$/, "");
-            
-            if (urlFromPath && (urlFromPath.startsWith("http") || urlFromPath.includes("youtube") || urlFromPath.includes("instagram") || urlFromPath.includes("tiktok") || urlFromPath.includes("twitter") || urlFromPath.includes("x.com") || urlFromPath.includes("youtu.be"))) {
-                if (!urlFromPath.startsWith("http")) {
-                    urlFromPath = "https://" + urlFromPath;
-                }
-                urlToDownload = urlFromPath;
-            }
-        }
-
-        if (urlToDownload) {
-            document.getElementById("url").value = urlToDownload;
-            // Wait briefly for UI to render
-            setTimeout(() => {
-                submitJob();
-            }, 500);
-        }
-    });
-
-    let pollInterval = null;
-    let currentJobId = null;
-    let currentJobStatus = null;
-
-    // Warn the user before they close a running download
-    window.addEventListener('beforeunload', (e) => {
-        if (currentJobId && ["pending", "processing", "uploading"].includes(currentJobStatus)) {
-            // Show standard browser 'Are you sure you want to leave?' dialog
-            e.preventDefault();
-            e.returnValue = '';
-        }
-    });
-
-    // Actually cancel the job only if they genuinely leave
-    window.addEventListener('unload', () => {
-        if (currentJobId && ["pending", "processing", "uploading"].includes(currentJobStatus)) {
-            fetch(`/api/v1/jobs/${currentJobId}`, {
-                method: 'DELETE',
-                keepalive: true
-            });
-        }
-    });
-
-    async function submitJob() {
-        const urlInput = document.getElementById("url").value;
-        const formatInput = document.getElementById("format").value;
-        const qualityInput = document.getElementById("quality").value;
-        const btn = document.getElementById("submitBtn");
-        const errorMsg = document.getElementById("error-msg");
-        const statusBox = document.getElementById("statusBox");
-        const downloadBtn = document.getElementById("downloadBtn");
-        
-        if (!urlInput) {
-            showError("Please enter a valid URL");
-            return;
-        }
-
-        // Reset UI
-        btn.disabled = true;
-        btn.querySelector('span').innerText = "Submitting...";
-        errorMsg.style.display = "none";
-        statusBox.style.display = "block";
-        downloadBtn.style.display = "none";
-        document.getElementById("progressBlock").style.display = "block";
-        document.getElementById("jobError").style.display = "none";
-        document.getElementById("progressBar").style.width = "0%";
-        document.getElementById("progressPercent").innerText = "0%";
-        updateBadge("PENDING");
-        document.getElementById("progressText").innerText = "Submitting to API...";
-        document.getElementById("videoMeta").style.display = "none";
-
-        if (pollInterval) clearInterval(pollInterval);
-
-        try {
-            const res = await fetch("/api/v1/jobs", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    url: urlInput,
-                    format: formatInput,
-                    quality: qualityInput
-                })
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.detail || data.error || "Failed to create job");
-            }
-
-            // Job created, start polling
-            currentJobId = data.job_id;
-            currentJobStatus = "pending";
-            startPolling(data.job_id);
-
-        } catch (err) {
-            showError(err.message);
-            statusBox.style.display = "none";
-            btn.disabled = false;
-            btn.querySelector('span').innerText = "Start Download";
-        }
-    }
-
-    function startPolling(jobId) {
-        document.getElementById("progressText").innerText = "Waiting in queue...";
-        
-        pollInterval = setInterval(async () => {
+        // ── Paste button ──────────────────────────────────────────────────
+        async function pasteFromClipboard() {
             try {
-                const res = await fetch(`/api/v1/jobs/${jobId}`);
-                if (!res.ok) throw new Error("Failed to fetch status");
-                
-                const data = await res.json();
-                updateUI(data);
+                const text = await navigator.clipboard.readText();
+                const urlInput = document.getElementById("url");
+                urlInput.value = text;
+                urlInput.dispatchEvent(new Event("input")); // trigger preview
+            } catch (e) {
+                // Clipboard API not available (non-HTTPS or denied) — just focus the field
+                document.getElementById("url").focus();
+            }
+        }
 
-                // Stop polling if terminal state
-                if (["completed", "failed", "cancelled", "expired"].includes(data.status)) {
-                    clearInterval(pollInterval);
-                    document.getElementById("submitBtn").disabled = false;
-                    document.getElementById("submitBtn").querySelector('span').innerText = "Start New Download";
+        // ── URL Preview ───────────────────────────────────────────────────
+        let previewDebounce = null;
+
+        document.getElementById("url").addEventListener("input", (e) => {
+            clearTimeout(previewDebounce);
+            const val = e.target.value.trim();
+            if (!val) { hidePreview(); return; }
+            // Quick sanity check before hitting the API
+            if (!val.startsWith("http")) return;
+            previewDebounce = setTimeout(() => fetchPreview(val), 600);
+        });
+
+        // Also trigger on paste event for instant feel
+        document.getElementById("url").addEventListener("paste", (e) => {
+            clearTimeout(previewDebounce);
+            setTimeout(() => {
+                const val = document.getElementById("url").value.trim();
+                if (val.startsWith("http")) fetchPreview(val);
+            }, 100);
+        });
+
+        function hidePreview() {
+            document.getElementById("previewCard").classList.remove("show");
+            document.getElementById("previewLoading").style.display = "none";
+        }
+
+        async function fetchPreview(url) {
+            document.getElementById("previewLoading").style.display = "block";
+            document.getElementById("previewCard").classList.remove("show");
+            try {
+                const res = await fetch(`/api/v1/preview?url=${encodeURIComponent(url)}`);
+                if (!res.ok) { hidePreview(); return; }
+                const data = await res.json();
+
+                document.getElementById("previewThumb").src = data.thumbnail || "";
+                document.getElementById("previewTitle").textContent = data.title || "Unknown Title";
+
+                let meta = "";
+                if (data.channel) meta += data.channel;
+                if (data.type === "playlist" && data.video_count) {
+                    meta += (meta ? " · " : "") + `${data.video_count} videos`;
+                } else if (data.duration_seconds) {
+                    const m = Math.floor(data.duration_seconds / 60);
+                    const s = data.duration_seconds % 60;
+                    meta += (meta ? " · " : "") + `${m}:${String(s).padStart(2, "0")}`;
                 }
+                // Show estimated file size
+                if (data.filesize_bytes && data.filesize_bytes > 0) {
+                    const sizeMb = (data.filesize_bytes / (1024 * 1024)).toFixed(1);
+                    meta += (meta ? " · " : "") + `~${sizeMb} MB`;
+                }
+                if (data.type === "playlist") meta += " · 📂 Playlist";
+                document.getElementById("previewMeta").textContent = meta;
+
+                document.getElementById("previewLoading").style.display = "none";
+                document.getElementById("previewCard").classList.add("show");
+            } catch (e) {
+                hidePreview();
+            }
+        }
+
+        // ── Poll state ────────────────────────────────────────────────────
+        let pollInterval = null;
+        let currentJobId = null;
+        let currentJobStatus = null;
+
+        // Warn the user before they close a running download
+        window.addEventListener('beforeunload', (e) => {
+            if (currentJobId && ["pending", "processing", "uploading"].includes(currentJobStatus)) {
+                // Show standard browser 'Are you sure you want to leave?' dialog
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        // Actually cancel the job only if they genuinely leave
+        window.addEventListener('unload', () => {
+            if (currentJobId && ["pending", "processing", "uploading"].includes(currentJobStatus)) {
+                fetch(`/api/v1/jobs/${currentJobId}`, {
+                    method: 'DELETE',
+                    keepalive: true
+                });
+            }
+        });
+
+        async function submitJob() {
+            const urlInput = document.getElementById("url").value;
+            const formatInput = document.getElementById("format").value;
+            const qualityInput = document.getElementById("quality").value;
+            const btn = document.getElementById("submitBtn");
+            const errorMsg = document.getElementById("error-msg");
+            const statusBox = document.getElementById("statusBox");
+            const downloadBtn = document.getElementById("downloadBtn");
+
+            if (!urlInput) {
+                showError("Please enter a valid URL");
+                return;
+            }
+
+            // Reset UI
+            btn.disabled = true;
+            btn.querySelector('span').innerText = "Submitting...";
+            errorMsg.style.display = "none";
+            statusBox.style.display = "block";
+            downloadBtn.style.display = "none";
+            document.getElementById("progressBlock").style.display = "block";
+            document.getElementById("jobError").style.display = "none";
+            document.getElementById("progressBar").style.width = "0%";
+            document.getElementById("progressPercent").innerText = "0%";
+            updateBadge("PENDING");
+            document.getElementById("progressText").innerText = "Submitting to API...";
+            document.getElementById("videoMeta").style.display = "none";
+
+            if (pollInterval) clearInterval(pollInterval);
+
+            try {
+                const res = await fetch("/api/v1/jobs", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        url: urlInput,
+                        format: formatInput,
+                        quality: qualityInput
+                    })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.detail || data.error || "Failed to create job");
+                }
+
+                // Job created, start polling
+                currentJobId = data.job_id;
+                currentJobStatus = "pending";
+                startPolling(data.job_id);
 
             } catch (err) {
-                console.error("Polling error:", err);
-            }
-        }, 3000); // poll every 3 seconds
-    }
-
-    function updateUI(data) {
-        currentJobStatus = data.status;
-        updateBadge(data.status);
-
-        // Update progress bar
-        let percent = data.progress || 0;
-        if (data.status === "completed") percent = 100;
-        
-        document.getElementById("progressBar").style.width = `${percent}%`;
-        document.getElementById("progressPercent").innerText = `${percent}%`;
-
-        // Update text
-        const pt = document.getElementById("progressText");
-        if (data.status === "pending") pt.innerText = "Waiting in queue...";
-        if (data.status === "processing") pt.innerText = "Downloading media...";
-        if (data.status === "uploading") pt.innerText = "Uploading to Cloud Storage...";
-        if (data.status === "completed") pt.innerText = "Ready!";
-        
-        // Show metadata if available
-        if (data.title) {
-            document.getElementById("videoMeta").style.display = "flex";
-            document.getElementById("videoTitle").innerText = data.title;
-            
-            if (data.thumbnail_url) {
-                document.getElementById("thumbImg").src = data.thumbnail_url;
-            }
-            
-            if (data.duration_seconds) {
-                const mins = Math.floor(data.duration_seconds / 60);
-                const secs = data.duration_seconds % 60;
-                document.getElementById("videoDuration").innerText = `${mins}:${secs.toString().padStart(2, '0')}`;
-                document.getElementById("videoDuration").style.display = "inline-block";
-            }
-            if (data.file_size_bytes) {
-                document.getElementById("videoSize").innerText = `${(data.file_size_bytes / (1024*1024)).toFixed(1)} MB`;
-                document.getElementById("videoSize").style.display = "inline-block";
+                showError(err.message);
+                statusBox.style.display = "none";
+                btn.disabled = false;
+                btn.querySelector('span').innerText = "Start Download";
             }
         }
 
-        // Handle states
-        if (data.status === "completed" && data.download_url) {
-            document.getElementById("progressBlock").style.display = "none";
-            const btn = document.getElementById("downloadBtn");
-            
-            // Rewrite the host dynamically so it works across network devices 
-            // (changes localhost to 192.168.x.x automatically on your phone)
-            try {
-                const urlObj = new URL(data.download_url);
-                urlObj.hostname = window.location.hostname;
-                btn.href = urlObj.toString();
-            } catch(e) {
-                btn.href = data.download_url;
-            }
-            
-            btn.style.display = "flex";
+        function startPolling(jobId) {
+            document.getElementById("progressText").innerText = "Waiting in queue...";
+
+            pollInterval = setInterval(async () => {
+                try {
+                    const res = await fetch(`/api/v1/jobs/${jobId}`);
+                    if (!res.ok) throw new Error("Failed to fetch status");
+
+                    const data = await res.json();
+                    updateUI(data);
+
+                    // Stop polling if terminal state
+                    if (["completed", "failed", "cancelled", "expired"].includes(data.status)) {
+                        clearInterval(pollInterval);
+                        document.getElementById("submitBtn").disabled = false;
+                        document.getElementById("submitBtn").querySelector('span').innerText = "Start New Download";
+                    }
+
+                } catch (err) {
+                    console.error("Polling error:", err);
+                }
+            }, 1500); // poll every 1.5s for real-time feel
         }
 
-        if (data.status === "failed") {
-            const errEl = document.getElementById("jobError");
-            errEl.innerText = `Failed: ${data.error_message || "Unknown error"}`;
+        function updateUI(data) {
+            currentJobStatus = data.status;
+            updateBadge(data.status);
+
+            // Update progress bar
+            let percent = data.progress || 0;
+            if (data.status === "completed") percent = 100;
+
+            document.getElementById("progressBar").style.width = `${percent}%`;
+            document.getElementById("progressPercent").innerText = `${percent}%`;
+
+            // Update text
+            const pt = document.getElementById("progressText");
+            if (data.status === "pending") pt.innerText = "Waiting in queue...";
+            if (data.status === "uploading") pt.innerText = "Uploading to Cloud Storage...";
+            if (data.status === "completed") pt.innerText = "Ready!";
+
+            // Playlist live tracker — overrides default text if it's a playlist
+            if (data.status === "processing" && data.playlist_total && data.playlist_total > 1) {
+                const curr = data.playlist_current || 1;
+                const total = data.playlist_total;
+                const title = data.playlist_current_title || "...";
+                const dlMb = data.playlist_bytes_downloaded ? (data.playlist_bytes_downloaded / (1024*1024)).toFixed(1) : null;
+                const totMb = data.playlist_bytes_total ? (data.playlist_bytes_total / (1024*1024)).toFixed(1) : null;
+                const mbLabel = dlMb
+                    ? (totMb ? `<span style="color:#38bdf8;">${dlMb} MB</span><span style="color:#475569;"> / ${totMb} MB</span>` : `<span style="color:#38bdf8;">${dlMb} MB</span>`)
+                    : "";
+                pt.innerHTML = `📂 Video <strong>${curr}</strong> of <strong>${total}</strong>&nbsp;·&nbsp;${mbLabel}<br>
+                    <span style="font-size:11px;color:#94a3b8;display:block;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;" title="${title}">${title}</span>`;
+            } else if (data.status === "processing") {
+                // Single video — show "X MB / Y MB"
+                const dlMb = data.playlist_bytes_downloaded ? (data.playlist_bytes_downloaded / (1024*1024)).toFixed(1) : null;
+                const totMb = data.playlist_bytes_total ? (data.playlist_bytes_total / (1024*1024)).toFixed(1) : null;
+                if (dlMb && totMb) {
+                    pt.innerHTML = `Downloading&nbsp;&nbsp;<span style="color:#38bdf8;font-weight:600;">${dlMb} MB</span><span style="color:#475569;"> / ${totMb} MB</span>`;
+                } else if (dlMb) {
+                    pt.innerHTML = `Downloading&nbsp;&nbsp;<span style="color:#38bdf8;font-weight:600;">${dlMb} MB</span>`;
+                } else {
+                    pt.innerText = "Downloading media...";
+                }
+            }
+
+            // Show metadata if available
+            if (data.title) {
+                document.getElementById("videoMeta").style.display = "flex";
+                document.getElementById("videoTitle").innerText = data.title;
+
+                if (data.thumbnail_url) {
+                    document.getElementById("thumbImg").src = data.thumbnail_url;
+                }
+
+                if (data.duration_seconds) {
+                    const mins = Math.floor(data.duration_seconds / 60);
+                    const secs = data.duration_seconds % 60;
+                    document.getElementById("videoDuration").innerText = `${mins}:${secs.toString().padStart(2, '0')}`;
+                    document.getElementById("videoDuration").style.display = "inline-block";
+                }
+                if (data.file_size_bytes) {
+                    document.getElementById("videoSize").innerText = `${(data.file_size_bytes / (1024 * 1024)).toFixed(1)} MB`;
+                    document.getElementById("videoSize").style.display = "inline-block";
+                }
+            }
+
+
+            // Handle states
+            if (data.status === "completed" && data.download_url) {
+                document.getElementById("progressBlock").style.display = "none";
+
+                // Confetti pop!
+                confetti({
+                    particleCount: 150,
+                    spread: 80,
+                    origin: { y: 0.6 },
+                    colors: ['#8b5cf6', '#ec4899', '#10b981', '#ffffff']
+                });
+
+                const btn = document.getElementById("downloadBtn");
+
+                // Rewrite the host dynamically so it works across network devices
+                // (changes localhost to 192.168.x.x automatically on your phone)
+                let finalUrl;
+                try {
+                    const urlObj = new URL(data.download_url);
+                    urlObj.hostname = window.location.hostname;
+                    finalUrl = urlObj.toString();
+                } catch (e) {
+                    finalUrl = data.download_url;
+                }
+
+                btn.href = finalUrl;
+                btn.style.display = "flex";
+
+                // ✅ Auto-download — triggers instantly when file is uploaded to cloud
+                const autoLink = document.createElement("a");
+                autoLink.href = finalUrl;
+                autoLink.download = "";
+                document.body.appendChild(autoLink);
+                autoLink.click();
+                document.body.removeChild(autoLink);
+            }
+
+            if (data.status === "failed") {
+                const errEl = document.getElementById("jobError");
+                errEl.innerText = `Failed: ${data.error_message || "Unknown error"}`;
+                errEl.style.display = "block";
+                document.getElementById("progressBlock").style.display = "none";
+            }
+        }
+
+        function updateBadge(status) {
+            const badge = document.getElementById("statusBadge");
+            badge.innerText = status.toUpperCase();
+            badge.className = `badge ${status.toLowerCase()}`;
+        }
+
+        function showError(msg) {
+            const errEl = document.getElementById("error-msg");
+            errEl.innerText = msg;
             errEl.style.display = "block";
-            document.getElementById("progressBlock").style.display = "none";
         }
-    }
-
-    function updateBadge(status) {
-        const badge = document.getElementById("statusBadge");
-        badge.innerText = status.toUpperCase();
-        badge.className = `badge ${status.toLowerCase()}`;
-    }
-
-    function showError(msg) {
-        const errEl = document.getElementById("error-msg");
-        errEl.innerText = msg;
-        errEl.style.display = "block";
-    }
-</script>
+    </script>
 </body>
+
 </html>

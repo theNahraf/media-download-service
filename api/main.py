@@ -14,6 +14,7 @@ from api.services.storage_service import ensure_bucket_exists
 from api.routes.jobs import router as jobs_router
 from api.routes.health import router as health_router
 from api.routes.admin import router as admin_router
+from api.routes.preview import router as preview_router
 from api.middleware.rate_limiter import RateLimitMiddleware
 
 # Configure logging
@@ -80,6 +81,7 @@ app.add_middleware(RateLimitMiddleware)
 app.include_router(jobs_router)
 app.include_router(health_router)
 app.include_router(admin_router)
+app.include_router(preview_router)
 
 # ── Static Files & Frontend ──
 app.mount("/static", StaticFiles(directory="frontend"), name="static")

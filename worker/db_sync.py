@@ -41,14 +41,29 @@ def mark_job_failed(job_id: str, error_message: str):
 
 def update_job_metadata(job_id: str, metadata: dict):
     """Update job with yt-dlp extracted metadata."""
+    title = metadata.get("title", "")
+    duration = metadata.get("duration")
+    thumbnail = metadata.get("thumbnail", "")
+
+    # For playlists, fall back to the first entry's thumbnail/duration
+    entries = metadata.get("entries")
+    if entries:
+        entry_list = list(entries)
+        first = entry_list[0] if entry_list else {}
+        if not thumbnail:
+            thumbnail = first.get("thumbnail", "")
+        if not duration:
+            duration = first.get("duration")
+
     with SessionLocal() as db:
         stmt = update(Job).where(Job.id == job_id).values(
-            title=metadata.get("title", "")[:500],
-            duration_seconds=metadata.get("duration"),
-            thumbnail_url=metadata.get("thumbnail", "")[:2048]
+            title=title[:500],
+            duration_seconds=duration,
+            thumbnail_url=thumbnail[:2048] if thumbnail else ""
         )
         db.execute(stmt)
         db.commit()
+
 
 def increment_retry_count(job_id: str):
     """Increment retry count for a job."""

@@ -100,6 +100,20 @@ async def get_job_with_progress(db: AsyncSession, job_id: UUID) -> Optional[dict
         return None
 
     progress = await cache_service.get_job_progress(str(job_id))
+    playlist_info = await cache_service.get_playlist_progress(str(job_id))
+
+    # Read single-video bytes from Redis (stored as "downloaded,total")
+    try:
+        r = await cache_service.get_redis()
+        single_bytes_raw = await r.get(f"job:{job_id}:bytes")
+    except Exception:
+        single_bytes_raw = None
+
+    single_dl, single_total = 0, 0
+    if single_bytes_raw:
+        parts = single_bytes_raw.split(",")
+        single_dl = int(parts[0]) if parts[0] else 0
+        single_total = int(parts[1]) if len(parts) > 1 and parts[1] else 0
 
     result = {
         "job_id": job.id,
@@ -118,6 +132,12 @@ async def get_job_with_progress(db: AsyncSession, job_id: UUID) -> Optional[dict
         "completed_at": job.completed_at,
         "download_url": None,
         "download_expires_at": None,
+        # Playlist live tracking
+        "playlist_current": playlist_info.get("current") if playlist_info else None,
+        "playlist_total": playlist_info.get("total") if playlist_info else None,
+        "playlist_current_title": playlist_info.get("current_title") if playlist_info else None,
+        "playlist_bytes_downloaded": playlist_info.get("bytes_downloaded") if playlist_info else (single_dl or None),
+        "playlist_bytes_total": playlist_info.get("bytes_total") if playlist_info else (single_total or None),
     }
 
     # Generate signed URL for completed jobs

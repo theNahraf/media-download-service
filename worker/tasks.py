@@ -10,7 +10,7 @@ from celery.utils.log import get_task_logger
 
 from worker.celery_app import celery_app
 from worker.db_sync import SessionLocal, update_job_status, update_job_metadata, increment_retry_count, mark_job_failed
-from worker.redis_sync import update_progress
+from worker.redis_sync import update_progress, update_playlist_progress, clear_playlist_progress
 from api.models import Job, JobStatus
 from api.services.storage_service import upload_file
 
@@ -47,6 +47,20 @@ def process_download(self, job_id: str):
         mode = job.format.value
         quality = job.quality
 
+    # ── Sanitize YouTube Mix/Radio URLs ──
+    # URLs like ?v=xxx&list=RDxxx&start_radio=1 are YouTube Mix playlists.
+    # Strip the playlist params so yt-dlp downloads only the single video.
+    from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+    parsed_url = urlparse(url)
+    if parsed_url.hostname and "youtube" in parsed_url.hostname:
+        query_params = parse_qs(parsed_url.query, keep_blank_values=True)
+        video_id = query_params.get("v")
+        if video_id:
+            # If there's a video ID, strip everything else — get clean single-video URL
+            clean_query = urlencode({"v": video_id[0]})
+            url = urlunparse(parsed_url._replace(query=clean_query))
+            logger.info(f"Sanitized YouTube URL to single video: {url}")
+
     update_job_status(job_id, JobStatus.PROCESSING)
     update_progress(job_id, 0)
     
@@ -55,14 +69,52 @@ def process_download(self, job_id: str):
     os.makedirs(job_temp_dir, exist_ok=True)
     
     try:
+        # Playlist tracking state (updated inside hook)
+        playlist_state = {"current": 0, "total": 0, "current_title": "", "bytes_downloaded": 0}
+
         def my_hook(d):
             if d['status'] == 'downloading':
                 try:
-                    # Remove ANSI escape codes and % sign
+                    info_dict = d.get('info_dict', {})
+
+                    # Track playlist video changes by watching playlist_index
+                    idx = info_dict.get('playlist_index') or info_dict.get('n_entries')
+                    if idx and playlist_state["total"] > 1:
+                        # Detect when we move to a new video
+                        if idx != playlist_state["current"]:
+                            playlist_state["current"] = idx
+                            playlist_state["current_title"] = info_dict.get('title', '...')
+
+                    # Per-video download % (0-100)
                     p_str = d.get('_percent_str', '0%') \
                         .replace('\x1b[0;94m', '').replace('\x1b[0m', '').replace('%', '').strip()
-                    percent = int(float(p_str))
-                    update_progress(job_id, percent)
+                    per_video_pct = max(0, min(100, int(float(p_str or '0'))))
+
+                    # Bytes stats
+                    downloaded_bytes = d.get('downloaded_bytes') or 0
+                    total_bytes = d.get('total_bytes') or d.get('total_bytes_estimate') or 0
+                    playlist_state["bytes_downloaded"] = downloaded_bytes
+                    if total_bytes:
+                        playlist_state["bytes_total"] = total_bytes
+
+                    # For playlists: overall % = completed videos + fraction of current
+                    if playlist_state["total"] > 1:
+                        curr = playlist_state["current"] or 1
+                        total = playlist_state["total"]
+                        overall_pct = int(((curr - 1) / total) * 100 + (per_video_pct / total))
+                        update_progress(job_id, overall_pct)
+                        update_playlist_progress(
+                            job_id, curr, total,
+                            playlist_state["current_title"],
+                            downloaded_bytes,
+                            playlist_state.get("bytes_total", 0)
+                        )
+                    else:
+                        update_progress(job_id, per_video_pct)
+                        # Store bytes for single video
+                        from worker.redis_sync import redis_client
+                        redis_client.setex(f"job:{job_id}:bytes", 600,
+                            f"{downloaded_bytes},{total_bytes}")
                 except Exception:
                     pass
 
@@ -105,6 +157,17 @@ def process_download(self, job_id: str):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             # First extract info to update DB
             info = ydl.extract_info(url, download=False)
+            
+            # Detect if this is a playlist and prime state BEFORE downloading
+            entries = info.get('entries') if info else None
+            if entries:
+                entry_list = list(entries)
+                playlist_state["total"] = min(len(entry_list), 50)
+                playlist_state["current"] = 1
+                # Try to get title of first entry
+                first = entry_list[0] if entry_list else {}
+                playlist_state["current_title"] = first.get('title', info.get('title', 'Playlist'))
+            
             update_job_metadata(job_id, info)
             
             # Then download
@@ -171,6 +234,7 @@ def process_download(self, job_id: str):
                 completed_at=datetime.now(timezone.utc)
             )
             update_progress(job_id, 100)
+            clear_playlist_progress(job_id)
             logger.info(f"Job {job_id} completed successfully")
 
     except yt_dlp.utils.DownloadError as e:

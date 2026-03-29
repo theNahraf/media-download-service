@@ -89,6 +89,12 @@ class JobStatusResponse(BaseModel):
     retry_count: int = 0
     download_url: Optional[str] = None
     download_expires_at: Optional[datetime] = None
+    # Playlist live tracking
+    playlist_current: Optional[int] = None
+    playlist_total: Optional[int] = None
+    playlist_current_title: Optional[str] = None
+    playlist_bytes_downloaded: Optional[int] = None
+    playlist_bytes_total: Optional[int] = None
     created_at: datetime
     updated_at: datetime
     completed_at: Optional[datetime] = None
