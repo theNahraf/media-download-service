@@ -67,7 +67,7 @@ async def create_job(
     # Enqueue to Celery if new
     if is_new:
         from worker.tasks import process_download
-        process_download.delay(str(job.id))
+        process_download.apply_async(args=[str(job.id)], task_id=str(job.id))
 
     return JobCreateResponse(
         job_id=job.id,
@@ -139,4 +139,9 @@ async def cancel_job(
     job = await job_service.cancel_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
+        
+    # Forcefully terminate the running Celery process
+    from worker.celery_app import celery_app
+    celery_app.control.revoke(str(job.id), terminate=True, signal='SIGKILL')
+    
     return None

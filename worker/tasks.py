@@ -78,7 +78,8 @@ def process_download(self, job_id: str):
                 }],
                 'progress_hooks': [my_hook],
                 'quiet': True,
-                'no_warnings': True
+                'no_warnings': True,
+                'playlistend': 50,
             }
         else:
             formats = {
@@ -95,7 +96,8 @@ def process_download(self, job_id: str):
                 'outtmpl': f'{job_temp_dir}/%(title)s.%(ext)s',
                 'progress_hooks': [my_hook],
                 'quiet': True,
-                'no_warnings': True
+                'no_warnings': True,
+                'playlistend': 50,
             }
 
         # Step 1: Extract info and download
@@ -106,32 +108,60 @@ def process_download(self, job_id: str):
             update_job_metadata(job_id, info)
             
             # Then download
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
-
-            if mode == "audio":
-                filename = os.path.splitext(filename)[0] + ".mp3"
-            else:
-                filename = os.path.splitext(filename)[0] + ".mp4"
-                
-            base_name = os.path.basename(filename)
-            file_size = os.path.getsize(filename)
+            ydl.extract_info(url, download=True)
             
+            # Check what was actually downloaded
+            downloaded_files = [f for f in os.listdir(job_temp_dir) if os.path.isfile(os.path.join(job_temp_dir, f))]
+            
+            if not downloaded_files:
+                raise Exception("No files were downloaded.")
+                
+            if len(downloaded_files) == 1:
+                # Single file download
+                base_name = downloaded_files[0]
+                filename = os.path.join(job_temp_dir, base_name)
+                extension = os.path.splitext(base_name)[1].lower()
+                
+                # Determine content type based on extension
+                if extension in ['.jpg', '.jpeg', '.png', '.webp']:
+                    content_type = f"image/{extension[1:]}"
+                elif extension in ['.mp3', '.m4a', '.wav']:
+                    content_type = "audio/mpeg"
+                else:
+                    content_type = "video/mp4"
+                
+                file_size = os.path.getsize(filename)
+                s3_key = f"downloads/{job_id}{extension}"
+                upload_target = filename
+            else:
+                # Multiple files (playlist or carousel), zip them
+                title_clean = str(info.get('title', 'playlist')).replace('/', '_')
+                base_name = f"{title_clean}.zip"
+                
+                zip_filename = os.path.join(DOWNLOAD_DIR, f"{job_id}.zip")
+                shutil.make_archive(zip_filename[:-4], 'zip', job_temp_dir)
+                
+                filename = zip_filename
+                extension = ".zip"
+                content_type = "application/zip"
+                file_size = os.path.getsize(filename)
+                s3_key = f"downloads/{job_id}.zip"
+                upload_target = filename
+
             # Step 2: Upload to Storage
-            logger.info(f"Uploading {filename} to Storage")
+            logger.info(f"Uploading {base_name} to Storage")
             update_job_status(job_id, JobStatus.UPLOADING, file_size_bytes=file_size, original_filename=base_name)
             
-            extension = os.path.splitext(base_name)[1]
-            s3_key = f"downloads/{job_id}{extension}"
-            
-            content_type = "audio/mpeg" if mode == "audio" else "video/mp4"
-            
             upload_file(
-                filename, 
+                upload_target, 
                 s3_key, 
                 content_type=content_type, 
                 original_filename=base_name
             )
+            
+            # Cleanup zip if we created it
+            if len(downloaded_files) > 1 and os.path.exists(upload_target):
+                os.remove(upload_target)
             
             # Step 3: Cleanup and mark complete
             update_job_status(

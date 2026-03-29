@@ -12,11 +12,14 @@ from api.models import JobStatus, MediaFormat
 
 # ─── Allowed domains for URL validation ───
 ALLOWED_DOMAINS = {
-    "youtube.com",
-    "www.youtube.com",
-    "youtu.be",
-    "m.youtube.com",
-    "music.youtube.com",
+    "youtube.com", "www.youtube.com", "youtu.be", "m.youtube.com", "music.youtube.com",
+    "instagram.com", "www.instagram.com",
+    "tiktok.com", "www.tiktok.com",
+    "twitter.com", "www.twitter.com", "x.com", "www.x.com",
+    "facebook.com", "www.facebook.com", "fb.watch",
+    "reddit.com", "www.reddit.com",
+    "vimeo.com", "www.vimeo.com",
+    "twitch.tv", "www.twitch.tv"
 }
 
 

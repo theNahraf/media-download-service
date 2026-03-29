@@ -316,6 +316,7 @@
             color: var(--text-main);
             display: -webkit-box;
             -webkit-line-clamp: 2;
+            line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
             line-height: 1.4;
@@ -372,7 +373,7 @@
 
 <div class="container">
     <h1>Media Downloader</h1>
-    <p class="subtitle">Scalable, async YouTube downloads</p>
+    <p class="subtitle">Download from YouTube, Instagram, TikTok, X/Twitter, Facebook & more</p>
 
     <div class="form-group">
         <label for="url">Video URL</label>
@@ -380,7 +381,7 @@
             <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
             </svg>
-            <input type="url" id="url" placeholder="https://www.youtube.com/watch?v=..." required />
+            <input type="url" id="url" placeholder="Paste media link (YouTube, Insta, TikTok, X...)" required />
         </div>
     </div>
 
@@ -479,9 +480,66 @@
                 `;
             }
         });
+
+        // Auto-fill and auto-submit logic for URL redirect feature
+        const hostname = window.location.hostname;
+        const pathname = window.location.pathname;
+        const search = window.location.search;
+        
+        let urlToDownload = null;
+        
+        // 1. Check for 'farhanyoutube.com' magic domain redirect
+        if (hostname.includes("farhanyoutube.com") || hostname.includes("farhanyoutu.be")) {
+            // Reconstruct the original youtube URL by removing 'farhan'
+            let originalDomain = hostname.replace("farhan", "");
+            urlToDownload = "https://" + originalDomain + pathname + search;
+        } else {
+            // 2. Check for path-based redirect (e.g. ourdomain.com/https://youtube.com/...)
+            let urlFromPath = pathname.substring(1);
+            if (search) {
+                urlFromPath += search;
+            }
+            urlFromPath = urlFromPath.replace(/\/$/, "");
+            
+            if (urlFromPath && (urlFromPath.startsWith("http") || urlFromPath.includes("youtube") || urlFromPath.includes("instagram") || urlFromPath.includes("tiktok") || urlFromPath.includes("twitter") || urlFromPath.includes("x.com") || urlFromPath.includes("youtu.be"))) {
+                if (!urlFromPath.startsWith("http")) {
+                    urlFromPath = "https://" + urlFromPath;
+                }
+                urlToDownload = urlFromPath;
+            }
+        }
+
+        if (urlToDownload) {
+            document.getElementById("url").value = urlToDownload;
+            // Wait briefly for UI to render
+            setTimeout(() => {
+                submitJob();
+            }, 500);
+        }
     });
 
     let pollInterval = null;
+    let currentJobId = null;
+    let currentJobStatus = null;
+
+    // Warn the user before they close a running download
+    window.addEventListener('beforeunload', (e) => {
+        if (currentJobId && ["pending", "processing", "uploading"].includes(currentJobStatus)) {
+            // Show standard browser 'Are you sure you want to leave?' dialog
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+
+    // Actually cancel the job only if they genuinely leave
+    window.addEventListener('unload', () => {
+        if (currentJobId && ["pending", "processing", "uploading"].includes(currentJobStatus)) {
+            fetch(`/api/v1/jobs/${currentJobId}`, {
+                method: 'DELETE',
+                keepalive: true
+            });
+        }
+    });
 
     async function submitJob() {
         const urlInput = document.getElementById("url").value;
@@ -531,6 +589,8 @@
             }
 
             // Job created, start polling
+            currentJobId = data.job_id;
+            currentJobStatus = "pending";
             startPolling(data.job_id);
 
         } catch (err) {
@@ -566,6 +626,7 @@
     }
 
     function updateUI(data) {
+        currentJobStatus = data.status;
         updateBadge(data.status);
 
         // Update progress bar
@@ -578,7 +639,7 @@
         // Update text
         const pt = document.getElementById("progressText");
         if (data.status === "pending") pt.innerText = "Waiting in queue...";
-        if (data.status === "processing") pt.innerText = `Downloading from YouTube...`;
+        if (data.status === "processing") pt.innerText = "Downloading media...";
         if (data.status === "uploading") pt.innerText = "Uploading to Cloud Storage...";
         if (data.status === "completed") pt.innerText = "Ready!";
         

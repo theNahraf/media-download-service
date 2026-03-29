@@ -13,6 +13,7 @@ from api.services.cache_service import close_redis
 from api.services.storage_service import ensure_bucket_exists
 from api.routes.jobs import router as jobs_router
 from api.routes.health import router as health_router
+from api.routes.admin import router as admin_router
 from api.middleware.rate_limiter import RateLimitMiddleware
 
 # Configure logging
@@ -78,6 +79,7 @@ app.add_middleware(RateLimitMiddleware)
 # ── Routes ──
 app.include_router(jobs_router)
 app.include_router(health_router)
+app.include_router(admin_router)
 
 # ── Static Files & Frontend ──
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
@@ -86,4 +88,14 @@ app.mount("/static", StaticFiles(directory="frontend"), name="static")
 @app.get("/", include_in_schema=False)
 async def serve_frontend():
     """Serve the frontend SPA."""
+    return FileResponse("frontend/index.html")
+
+@app.get("/adminuser", include_in_schema=False)
+async def serve_admin_frontend():
+    """Serve the Custom Admin Dashboard."""
+    return FileResponse("frontend/admin.html")
+
+@app.get("/{path:path}", include_in_schema=False)
+async def catch_all_frontend(path: str):
+    """Catch-all route to serve frontend for the URL redirect feature."""
     return FileResponse("frontend/index.html")

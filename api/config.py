@@ -3,6 +3,7 @@ Application configuration — loaded from environment variables.
 """
 import os
 from pydantic_settings import BaseSettings
+from pydantic import Field
 from functools import lru_cache
 
 
@@ -36,6 +37,10 @@ class Settings(BaseSettings):
 
     # Worker
     worker_concurrency: int = 4
+
+    # Admin Dashboard Auth
+    admin_user: str = Field(default="admin", alias="FLOWER_USER")
+    admin_password: str = Field(default="admin_secret_2026", alias="FLOWER_PASSWORD")
 
     class Config:
         env_file = ".env"
