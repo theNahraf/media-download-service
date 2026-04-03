@@ -156,6 +156,9 @@ def process_download(self, job_id: str):
                 'extractor_args': {'youtube': {'client': ['android', 'ios']}}, # Bypass HTML bot check
             }
 
+        if os.path.exists("cookies.txt"):
+            ydl_opts['cookiefile'] = 'cookies.txt'
+
         # Step 1: Extract info and download
         logger.info(f"Downloading {url} to {job_temp_dir}")
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:

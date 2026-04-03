@@ -31,6 +31,14 @@ async def lifespan(app: FastAPI):
     # ── Startup ──
     logger.info("🚀 Starting Media Download Service API...")
 
+    import os
+    cookie_str = os.getenv("YOUTUBE_COOKIES", "")
+    if cookie_str:
+        # Write cookies to a file for yt-dlp to use
+        with open("cookies.txt", "w", encoding="utf-8") as f:
+            f.write(cookie_str)
+        logger.info("✅ Loaded YOUTUBE_COOKIES into cookies.txt")
+
     # Initialize database tables
     await init_db()
     logger.info("✅ Database initialized")

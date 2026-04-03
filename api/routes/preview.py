@@ -23,6 +23,10 @@ def _extract_info_sync(url: str) -> dict:
         'source_address': '0.0.0.0', # Force IPv4 to bypass cloud network blocks
         'extractor_args': {'youtube': {'client': ['android', 'ios']}}, # Bypass HTML bot check
     }
+    import os
+    if os.path.exists("cookies.txt"):
+        ydl_opts['cookiefile'] = 'cookies.txt'
+
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
         return info or {}
@@ -39,6 +43,10 @@ def _extract_single_video_size(url: str) -> int:
         'source_address': '0.0.0.0', # Force IPv4 to bypass cloud network blocks
         'extractor_args': {'youtube': {'client': ['android', 'ios']}}, # Bypass HTML bot check
     }
+    import os
+    if os.path.exists("cookies.txt"):
+        ydl_opts['cookiefile'] = 'cookies.txt'
+
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
