@@ -21,6 +21,7 @@ def _extract_info_sync(url: str) -> dict:
         'extract_flat': True,   # Fast — don't recurse into each video for playlists
         'playlistend': 3,        # Only look at first 3 entries for speed
         'source_address': '0.0.0.0', # Force IPv4 to bypass cloud network blocks
+        'extractor_args': {'youtube': {'client': ['android', 'ios']}}, # Bypass HTML bot check
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
@@ -36,6 +37,7 @@ def _extract_single_video_size(url: str) -> int:
         'format': 'bestvideo+bestaudio/best',
         'noplaylist': True,
         'source_address': '0.0.0.0', # Force IPv4 to bypass cloud network blocks
+        'extractor_args': {'youtube': {'client': ['android', 'ios']}}, # Bypass HTML bot check
     }
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
