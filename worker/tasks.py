@@ -133,6 +133,7 @@ def process_download(self, job_id: str):
                 'no_warnings': True,
                 'playlistend': 50,
                 'source_address': '0.0.0.0', # Force IPv4 to bypass cloud network blocks
+                'extractor_args': {'youtube': {'client': ['ios']}}, # Bypass bot check
             }
         else:
             formats = {
@@ -152,6 +153,7 @@ def process_download(self, job_id: str):
                 'no_warnings': True,
                 'playlistend': 50,
                 'source_address': '0.0.0.0', # Force IPv4 to bypass cloud network blocks
+                'extractor_args': {'youtube': {'client': ['ios']}}, # Bypass bot check
             }
 
         if os.path.exists("cookies.txt"):
