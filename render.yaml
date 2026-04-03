@@ -1,0 +1,44 @@
+# render.yaml — Infrastructure as Code for Render.com
+services:
+  # ── FastAPI Web Server ──
+  - type: web
+    name: media-download-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile.api
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: GDRIVE_CLIENT_ID
+        sync: false
+      - key: GDRIVE_CLIENT_SECRET
+        sync: false
+      - key: GDRIVE_REFRESH_TOKEN
+        sync: false
+      - key: GDRIVE_FOLDER_ID
+        sync: false
+      - key: RATE_LIMIT_PER_HOUR
+        value: "30"
+      - key: DOWNLOAD_EXPIRY_HOURS
+        value: "24"
+
+  # ── Celery Worker + Beat (Background) ──
+  - type: worker
+    name: media-download-worker
+    runtime: docker
+    dockerfilePath: ./Dockerfile.worker
+    dockerCommand: "bash -c 'celery -A worker.celery_app worker --concurrency=2 --loglevel=info & celery -A worker.celery_app beat --loglevel=info & wait'"
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: GDRIVE_CLIENT_ID
+        sync: false
+      - key: GDRIVE_CLIENT_SECRET
+        sync: false
+      - key: GDRIVE_REFRESH_TOKEN
+        sync: false
+      - key: GDRIVE_FOLDER_ID
+        sync: false
