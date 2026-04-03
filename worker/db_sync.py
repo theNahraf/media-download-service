@@ -12,12 +12,13 @@ from api.config import get_settings
 settings = get_settings()
 
 # We need a synchronous database URL for Celery workers
-sync_db_url = settings.database_url.replace("postgresql+asyncpg", "postgresql")
+# Convert asyncpg URL to psycopg2 format, and handle SSL param naming
+sync_db_url = settings.database_url.replace("postgresql+asyncpg://", "postgresql://")
+sync_db_url = sync_db_url.replace("?ssl=require", "?sslmode=require")
 if "://" not in sync_db_url:
-    # Fallback if env var doesn't contain driver
     sync_db_url = os.getenv("DATABASE_URL", "postgresql://mediadown:change_me_in_production@localhost:5432/mediadownload").replace("+asyncpg", "")
 
-engine = create_engine(sync_db_url, pool_size=10, max_overflow=5)
+engine = create_engine(sync_db_url, pool_size=5, max_overflow=3)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def update_job_status(job_id: str, status: JobStatus, **kwargs):
