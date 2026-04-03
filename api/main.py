@@ -36,7 +36,7 @@ async def lifespan(app: FastAPI):
     if cookie_str:
         # Write cookies to a file for yt-dlp to use
         with open("cookies.txt", "w", encoding="utf-8") as f:
-            f.write(cookie_str)
+            f.write(cookie_str.replace("\\n", "\n"))
         logger.info("✅ Loaded YOUTUBE_COOKIES into cookies.txt")
 
     # Initialize database tables
