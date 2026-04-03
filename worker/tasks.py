@@ -132,6 +132,7 @@ def process_download(self, job_id: str):
                 'quiet': True,
                 'no_warnings': True,
                 'playlistend': 50,
+                'source_address': '0.0.0.0', # Force IPv4 to bypass cloud network blocks
             }
         else:
             formats = {
@@ -150,6 +151,7 @@ def process_download(self, job_id: str):
                 'quiet': True,
                 'no_warnings': True,
                 'playlistend': 50,
+                'source_address': '0.0.0.0', # Force IPv4 to bypass cloud network blocks
             }
 
         # Step 1: Extract info and download
