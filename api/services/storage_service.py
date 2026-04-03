@@ -1,115 +1,118 @@
 """
-S3/MinIO storage service — handles file uploads and signed URL generation.
+Google Drive storage service — handles file uploads and download URL generation
+using OAuth2 credentials (refresh token) so files are owned by your personal
+Google account and count against your 5TB quota.
 """
 import io
+import os
+import logging
 from typing import Optional
-from datetime import timedelta
-import boto3
-from botocore.config import Config as BotoConfig
-from botocore.exceptions import ClientError
+
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload
+from googleapiclient.errors import HttpError
 
 from api.config import get_settings
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
-# Lazy-initialized S3 client
-_s3_client = None
+# Scopes required for uploading, deleting, and sharing files
+SCOPES = ["https://www.googleapis.com/auth/drive"]
+
+# Lazy-initialized Drive service
+_drive_service = None
 
 
-def get_s3_client():
-    """Get or create S3 client (MinIO-compatible)."""
-    global _s3_client
-    if _s3_client is None:
-        _s3_client = boto3.client(
-            "s3",
-            endpoint_url=settings.s3_endpoint_url,
-            aws_access_key_id=settings.s3_access_key,
-            aws_secret_access_key=settings.s3_secret_key,
-            config=BotoConfig(
-                signature_version="s3v4",
-                s3={"addressing_style": "path"},
-            ),
-            region_name="us-east-1",
+def _get_credentials():
+    """
+    Build OAuth2 credentials from the refresh token stored in environment variables.
+    The refresh token was generated once via setup_gdrive_oauth.py.
+    """
+    creds = Credentials(
+        token=None,  # Will be refreshed automatically
+        refresh_token=settings.gdrive_refresh_token,
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=settings.gdrive_client_id,
+        client_secret=settings.gdrive_client_secret,
+        scopes=SCOPES,
+    )
+    # Force a token refresh to get a valid access token
+    creds.refresh(Request())
+    return creds
+
+
+def get_drive_service():
+    """Get or create the authenticated Google Drive API service."""
+    global _drive_service
+    if _drive_service is None:
+        credentials = _get_credentials()
+        _drive_service = build(
+            "drive", "v3", credentials=credentials, cache_discovery=False
         )
-    return _s3_client
+    return _drive_service
 
 
 def ensure_bucket_exists():
-    """Create the download bucket and make it public."""
-    client = get_s3_client()
+    """
+    Verify that the configured Google Drive folder exists and is accessible.
+    Equivalent of the old ensure_bucket_exists().
+    """
+    service = get_drive_service()
+    folder_id = settings.gdrive_folder_id
     try:
-        client.head_bucket(Bucket=settings.s3_bucket_name)
-    except ClientError:
-        client.create_bucket(Bucket=settings.s3_bucket_name)
-        
-    # Make the bucket completely public for downloads
-    import json
-    policy = {
-        "Version": "2012-10-17",
-        "Statement": [
-            {
-                "Effect": "Allow",
-                "Principal": "*",
-                "Action": ["s3:GetObject"],
-                "Resource": [f"arn:aws:s3:::{settings.s3_bucket_name}/*"]
-            }
-        ]
-    }
-    try:
-        client.put_bucket_policy(Bucket=settings.s3_bucket_name, Policy=json.dumps(policy))
-    except ClientError as e:
-        print(f"Policy error: {e}")
-
-    # Set lifecycle policy: auto-delete after 24 hours
-    try:
-        client.put_bucket_lifecycle_configuration(
-            Bucket=settings.s3_bucket_name,
-            LifecycleConfiguration={
-                "Rules": [
-                    {
-                        "ID": "expire-downloads",
-                        "Filter": {"Prefix": "downloads/"},
-                        "Status": "Enabled",
-                        "Expiration": {"Days": 1},
-                    }
-                ]
-            },
+        meta = service.files().get(fileId=folder_id, fields="id, name").execute()
+        logger.info(
+            f"✅ Google Drive folder verified: '{meta.get('name')}' ({folder_id})"
         )
-    except ClientError:
-        pass
+    except HttpError as e:
+        raise RuntimeError(
+            f"Cannot access Google Drive folder {folder_id}. Error: {e}"
+        )
 
 
 def upload_file(
     file_path: str,
     s3_key: str,
     content_type: str = "application/octet-stream",
-    original_filename: str = None
+    original_filename: str = None,
 ) -> str:
     """
-    Upload a local file to S3/MinIO with the specified content disposition.
-    Returns the S3 key.
+    Upload a local file to Google Drive inside the configured folder.
+    Returns the Google Drive file ID (stored in the DB's s3_key column).
     """
-    client = get_s3_client()
-    extra_args = {"ContentType": content_type}
-    
-    if original_filename:
-        import urllib.parse
-        encoded_name = urllib.parse.quote(original_filename)
-        
-        # Create an ASCII-only fallback string, removing quotes
-        ascii_fallback = "".join(c if ord(c) < 128 else "_" for c in original_filename)
-        ascii_fallback = ascii_fallback.replace('"', '').replace('\n', '').replace('\r', '')
-        
-        # Use both filename (for older/fallback compatibility) and filename* (for modern utf-8)
-        extra_args["ContentDisposition"] = f'attachment; filename="{ascii_fallback}"; filename*=UTF-8\'\'{encoded_name}'
-        
-    client.upload_file(
+    service = get_drive_service()
+
+    # Use original filename if provided, else derive from s3_key
+    name = original_filename or os.path.basename(s3_key)
+
+    file_metadata = {
+        "name": name,
+        "parents": [settings.gdrive_folder_id],
+    }
+
+    media = MediaFileUpload(
         file_path,
-        settings.s3_bucket_name,
-        s3_key,
-        ExtraArgs=extra_args,
+        mimetype=content_type,
+        resumable=True,
+        chunksize=10 * 1024 * 1024,  # 10 MB chunks for large files
     )
-    return s3_key
+
+    file = service.files().create(
+        body=file_metadata,
+        media_body=media,
+        fields="id",
+    ).execute()
+
+    file_id = file.get("id")
+    logger.info(f"Uploaded '{name}' to Google Drive → file ID: {file_id}")
+
+    # Make file publicly accessible (anyone with link can download)
+    _make_public(file_id)
+
+    return file_id
 
 
 def upload_bytes(
@@ -117,53 +120,81 @@ def upload_bytes(
     s3_key: str,
     content_type: str = "application/octet-stream",
 ) -> str:
-    """Upload raw bytes to S3/MinIO."""
-    client = get_s3_client()
-    client.upload_fileobj(
+    """Upload raw bytes to Google Drive."""
+    service = get_drive_service()
+
+    name = os.path.basename(s3_key)
+    file_metadata = {
+        "name": name,
+        "parents": [settings.gdrive_folder_id],
+    }
+
+    media = MediaIoBaseUpload(
         io.BytesIO(data),
-        settings.s3_bucket_name,
-        s3_key,
-        ExtraArgs={"ContentType": content_type},
+        mimetype=content_type,
+        resumable=True,
     )
-    return s3_key
+
+    file = service.files().create(
+        body=file_metadata,
+        media_body=media,
+        fields="id",
+    ).execute()
+
+    file_id = file.get("id")
+    _make_public(file_id)
+    return file_id
 
 
-import urllib.parse
-
-def generate_signed_url(s3_key: str, expiry_seconds: Optional[int] = None, download_filename: Optional[str] = None) -> str:
+def generate_signed_url(
+    s3_key: str,
+    expiry_seconds: Optional[int] = None,
+    download_filename: Optional[str] = None,
+) -> str:
     """
-    Returns the direct public URL for downloading a file, completely bypassing presigned signatures.
+    Generate a direct download URL for a Google Drive file.
+    The s3_key parameter is actually the Google Drive file ID.
+    Uses confirm=t to bypass the virus-scan warning for large files.
     """
-    # Simply format the URL based on the public server IP!
-    base = settings.s3_public_url.rstrip("/")
-    url = f"{base}/{settings.s3_bucket_name}/{s3_key}"
-    
-    if download_filename:
-        import urllib.parse
-        # Create safe ascii filename for older browsers
-        safe_name = "".join(c if ord(c) < 128 else "_" for c in download_filename).replace('"', '')
-        encoded_name = urllib.parse.quote(download_filename)
-        # Using the standard disposition format for query params
-        disposition = f'attachment; filename="{safe_name}"; filename*=UTF-8\'\'{encoded_name}'
-        url += f"?response-content-disposition={urllib.parse.quote(disposition)}"
-        
+    file_id = s3_key
+    url = f"https://drive.usercontent.google.com/download?id={file_id}&export=download&confirm=t"
     return url
 
 
 def delete_file(s3_key: str):
-    """Delete a file from S3/MinIO."""
-    client = get_s3_client()
+    """Delete a file from Google Drive. s3_key is the Drive file ID."""
+    service = get_drive_service()
     try:
-        client.delete_object(Bucket=settings.s3_bucket_name, Key=s3_key)
-    except ClientError:
-        pass
+        service.files().delete(fileId=s3_key).execute()
+        logger.info(f"Deleted file {s3_key} from Google Drive")
+    except HttpError as e:
+        if e.resp.status == 404:
+            logger.warning(f"File {s3_key} not found on Drive (already deleted?)")
+        else:
+            logger.error(f"Error deleting file {s3_key}: {e}")
 
 
 def file_exists(s3_key: str) -> bool:
-    """Check if a file exists in S3/MinIO."""
-    client = get_s3_client()
+    """Check if a file exists in Google Drive. s3_key is the Drive file ID."""
+    service = get_drive_service()
     try:
-        client.head_object(Bucket=settings.s3_bucket_name, Key=s3_key)
+        service.files().get(fileId=s3_key, fields="id").execute()
         return True
-    except ClientError:
+    except HttpError:
         return False
+
+
+def _make_public(file_id: str):
+    """
+    Grant 'anyone with the link' read access so the download URL works
+    without authentication.
+    """
+    service = get_drive_service()
+    try:
+        service.permissions().create(
+            fileId=file_id,
+            body={"type": "anyone", "role": "reader"},
+            fields="id",
+        ).execute()
+    except HttpError as e:
+        logger.warning(f"Could not set public permission on {file_id}: {e}")

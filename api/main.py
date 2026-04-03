@@ -35,12 +35,12 @@ async def lifespan(app: FastAPI):
     await init_db()
     logger.info("✅ Database initialized")
 
-    # Ensure S3 bucket exists
+    # Ensure Google Drive folder is accessible
     try:
         ensure_bucket_exists()
-        logger.info("✅ Storage bucket ready")
+        logger.info("✅ Google Drive storage ready")
     except Exception as e:
-        logger.warning(f"⚠️  Storage bucket check failed (will retry): {e}")
+        logger.warning(f"⚠️  Google Drive check failed (will retry): {e}")
 
     logger.info("✅ API ready to accept requests")
 

@@ -28,7 +28,9 @@ downloads/
 # Docker volumes
 pg_data/
 redis_data/
-minio_data/
+
+# Google Drive credentials — NEVER commit
+credentials/
 
 # Celery beat schedule file (auto-generated at runtime)
 celerybeat-schedule

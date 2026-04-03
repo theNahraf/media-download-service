@@ -215,7 +215,7 @@ def process_download(self, job_id: str):
             logger.info(f"Uploading {base_name} to Storage")
             update_job_status(job_id, JobStatus.UPLOADING, file_size_bytes=file_size, original_filename=base_name)
             
-            upload_file(
+            drive_file_id = upload_file(
                 upload_target, 
                 s3_key, 
                 content_type=content_type, 
@@ -227,10 +227,11 @@ def process_download(self, job_id: str):
                 os.remove(upload_target)
             
             # Step 3: Cleanup and mark complete
+            # Use the Google Drive file ID (not the old S3 path) for download URL generation
             update_job_status(
                 job_id,
                 JobStatus.COMPLETED,
-                s3_key=s3_key,
+                s3_key=drive_file_id,
                 completed_at=datetime.now(timezone.utc)
             )
             update_progress(job_id, 100)

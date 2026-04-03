@@ -40,12 +40,13 @@ async def health_check():
     except Exception:
         status = "degraded"
 
-    # Check storage
+    # Check Google Drive storage
     try:
-        from api.services.storage_service import get_s3_client, ensure_bucket_exists
+        from api.services.storage_service import get_drive_service
         from api.config import get_settings
-        client = get_s3_client()
-        client.head_bucket(Bucket=get_settings().s3_bucket_name)
+        settings = get_settings()
+        service = get_drive_service()
+        service.files().get(fileId=settings.gdrive_folder_id, fields="id").execute()
         storage_ok = True
     except Exception:
         status = "degraded"

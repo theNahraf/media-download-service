@@ -1021,13 +1021,17 @@
 
                 const btn = document.getElementById("downloadBtn");
 
-                // Rewrite the host dynamically so it works across network devices
-                // (changes localhost to 192.168.x.x automatically on your phone)
+                // Only rewrite host for same-origin storage URLs (e.g. local MinIO).
+                // External URLs (Google Drive, etc.) are used as-is.
                 let finalUrl;
                 try {
                     const urlObj = new URL(data.download_url);
-                    urlObj.hostname = window.location.hostname;
-                    finalUrl = urlObj.toString();
+                    if (urlObj.hostname === 'localhost' || urlObj.hostname === '127.0.0.1' || urlObj.hostname === window.location.hostname) {
+                        urlObj.hostname = window.location.hostname;
+                        finalUrl = urlObj.toString();
+                    } else {
+                        finalUrl = data.download_url;
+                    }
                 } catch (e) {
                     finalUrl = data.download_url;
                 }

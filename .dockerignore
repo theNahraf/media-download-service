@@ -37,3 +37,6 @@ downloads/
 
 # Alembic
 alembic/versions/__pycache__/
+
+# Credentials (mounted at runtime, never bake into images)
+credentials/

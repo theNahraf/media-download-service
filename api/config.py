@@ -14,12 +14,11 @@ class Settings(BaseSettings):
     # Redis
     redis_url: str
 
-    # S3 / MinIO
-    s3_endpoint_url: str
-    s3_access_key: str
-    s3_secret_key: str
-    s3_bucket_name: str
-    s3_public_url: str
+    # Google Drive Storage (OAuth2)
+    gdrive_client_id: str
+    gdrive_client_secret: str
+    gdrive_refresh_token: str
+    gdrive_folder_id: str
 
     # API
     api_host: str = "0.0.0.0"
